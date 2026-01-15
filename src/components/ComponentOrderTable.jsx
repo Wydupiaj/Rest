@@ -1,12 +1,14 @@
 
 import * as React from 'react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Paper from '@mui/material/Paper'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import StatusChip from './StatusChip'
 import RowActions from './RowActions'
-import OrderInfoDialog from './OrderInfoDialog'
-import rows from '../data/sampleOrders'
+import { orderAPI } from '../services/api'
+import Box from '@mui/material/Box'
+import CircularProgress from '@mui/material/CircularProgress'
+import Alert from '@mui/material/Alert'
 
 const columns = [
   { field: 'orderId', headerName: 'Order-ID', width: 140 },
@@ -28,15 +30,57 @@ const columns = [
 ]
 
 export default function ComponentOrderTable(){
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [selectedOrderId, setSelectedOrderId] = useState(null)
-  const [selectedOrderData, setSelectedOrderData] = useState(null)
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Fetch orders from API
+  useEffect(() => {
+    fetchOrders()
+  }, [])
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await orderAPI.getAllOrders()
+      // Convert snake_case from DB to camelCase for frontend
+      const formattedData = data.map((order, index) => ({
+        id: order.id || index,
+        orderId: order.order_id,
+        startTime: order.start_time,
+        assemblySeq: order.assembly_seq,
+        material: order.material,
+        materialDesc: order.material_desc,
+        qty: order.qty,
+        equip: order.equip,
+        orderType: order.order_type,
+        orderIdentifier: order.order_identifier,
+        orderTypeDesc: order.order_type_desc,
+        status: order.status,
+        pop: order.pop,
+        wip: order.wip,
+        completed: order.completed,
+        scrapped: order.scrapped,
+        lastModified: order.last_modified,
+      }))
+      setOrders(formattedData)
+    } catch (err) {
+      console.error('Error fetching orders:', err)
+      setError('Failed to load orders. Make sure the backend server is running on http://localhost:8000')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleOrderInfo = (orderId) => {
-    const orderData = rows.find(row => row.id === orderId)
-    setSelectedOrderId(orderId)
-    setSelectedOrderData(orderData)
-    setDialogOpen(true)
+    const order = orders.find(o => o.id === orderId)
+    const orderIdValue = order?.orderId
+
+    if (!orderIdValue) return
+
+    // Open in new tab
+    window.open(`/parent-pop/${orderIdValue}`, '_blank')
   }
 
   const handleCopyToOrder = (orderId) => {
@@ -64,27 +108,33 @@ export default function ComponentOrderTable(){
 
   return (
     <>
-      <Paper elevation={0} sx={{ height: 720, width: '100%', border: (t)=>`1px solid ${t.palette.divider}` }}>
-        <DataGrid
-          rows={rows}
-          columns={columnsWithActions}
-          getRowId={(r)=>r.id}
-          pageSizeOptions={[25,50,100]}
-          initialState={{
-            pagination: { paginationModel: { pageSize: 50, page: 0 } },
-            sorting: { sortModel: [{ field: 'startTime', sort: 'desc' }] }
-          }}
-          disableRowSelectionOnClick
-          slots={{ toolbar: GridToolbar }}
-          density="compact"
-        />
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          ⚠️ {error}
+        </Alert>
+      )}
+
+      <Paper elevation={0} sx={{ height: 720, width: '100%', border: (t)=>`1px solid ${t.palette.divider}`, position: 'relative' }}>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <DataGrid
+            rows={orders}
+            columns={columnsWithActions}
+            getRowId={(r)=>r.id}
+            pageSizeOptions={[25,50,100]}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 50, page: 0 } },
+              sorting: { sortModel: [{ field: 'startTime', sort: 'desc' }] }
+            }}
+            disableRowSelectionOnClick
+            slots={{ toolbar: GridToolbar }}
+            density="compact"
+          />
+        )}
       </Paper>
-      <OrderInfoDialog
-        open={dialogOpen}
-        orderId={selectedOrderId}
-        orderData={selectedOrderData}
-        onClose={() => setDialogOpen(false)}
-      />
     </>
   )
 }

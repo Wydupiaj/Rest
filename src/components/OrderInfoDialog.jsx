@@ -61,9 +61,33 @@ function TabPanel(props) {
 export default function OrderInfoDialog({ open, orderId, orderData, onClose }) {
   const [tabValue, setTabValue] = useState(0)
 
-  const pops = orderData?.relatedPops || []
-  const params = orderData?.productionParameters || []
-  const materials = orderData?.consumedMaterials || []
+  // Convert snake_case to camelCase for data display
+  const convertData = (data) => {
+    if (!data) return {}
+    return {
+      ...data,
+      serialNumber: data.serial_number,
+      popId: data.pop_id || data.popId,
+      popType: data.pop_type,
+      popTypeDesc: data.pop_type_desc,
+      popStatus: data.pop_status,
+      registrationCode: data.registration_code,
+      registrationDesc: data.registration_desc,
+      paramId: data.param_id,
+      dataType: data.data_type,
+      lastModifiedBy: data.last_modified_by,
+      lastModifiedDate: data.last_modified_date,
+      materialConsumed: data.material_consumed,
+      materialDescription: data.material_description,
+      segmentId: data.segment_id,
+      equipmentId: data.equipment_id,
+      equipmentLevel: data.equipment_level,
+    }
+  }
+
+  const pops = orderData?.relatedPops?.map((pop, idx) => ({ ...convertData(pop), id: idx })) || []
+  const params = orderData?.productionParameters?.map((param, idx) => ({ ...convertData(param), id: idx })) || []
+  const materials = orderData?.consumedMaterials?.map((mat, idx) => ({ ...convertData(mat), id: idx })) || []
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue)
@@ -92,6 +116,7 @@ export default function OrderInfoDialog({ open, orderId, orderData, onClose }) {
               autoHeight
               density="compact"
               slots={{ toolbar: GridToolbar }}
+              getRowId={(row) => row.id}
             />
           </Paper>
         </TabPanel>
@@ -105,6 +130,7 @@ export default function OrderInfoDialog({ open, orderId, orderData, onClose }) {
               autoHeight
               density="compact"
               slots={{ toolbar: GridToolbar }}
+              getRowId={(row) => row.id}
             />
           </Paper>
         </TabPanel>
@@ -118,6 +144,7 @@ export default function OrderInfoDialog({ open, orderId, orderData, onClose }) {
               autoHeight
               density="compact"
               slots={{ toolbar: GridToolbar }}
+              getRowId={(row) => row.id}
             />
           </Paper>
         </TabPanel>

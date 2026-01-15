@@ -1,0 +1,109 @@
+import Database from 'better-sqlite3';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dbPath = path.join(__dirname, 'database.db');
+
+const db = new Database(dbPath, { verbose: console.log });
+
+// Enable foreign keys
+db.pragma('foreign_keys = ON');
+
+// Initialize database schema
+export function initializeDatabase() {
+  // Create orders table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id TEXT UNIQUE NOT NULL,
+      start_time TEXT NOT NULL,
+      assembly_seq TEXT,
+      material TEXT NOT NULL,
+      material_desc TEXT NOT NULL,
+      qty TEXT,
+      equip TEXT,
+      order_type TEXT,
+      order_identifier TEXT,
+      order_type_desc TEXT,
+      status TEXT DEFAULT 'RELEASED',
+      pop INTEGER DEFAULT 0,
+      wip INTEGER DEFAULT 0,
+      completed INTEGER DEFAULT 0,
+      scrapped INTEGER DEFAULT 0,
+      last_modified TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Create related_pops table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS related_pops (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pop_id TEXT UNIQUE NOT NULL,
+      order_id TEXT,
+      material_produced TEXT,
+      quantity TEXT,
+      pop_id_ref TEXT,
+      pop_type TEXT,
+      pop_type_desc TEXT,
+      pop_status TEXT,
+      registration_code TEXT,
+      registration_desc TEXT,
+      timestamp TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create production_parameters table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS production_parameters (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      param_id TEXT UNIQUE NOT NULL,
+      order_id TEXT,
+      parameter TEXT NOT NULL,
+      value TEXT,
+      data_type TEXT,
+      uom TEXT,
+      description TEXT,
+      last_modified_by TEXT,
+      last_modified_date TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create consumed_materials table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS consumed_materials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id TEXT,
+      material_consumed TEXT NOT NULL,
+      material_description TEXT,
+      segment_id TEXT,
+      equipment_id TEXT,
+      equipment_level TEXT,
+      quantity TEXT,
+      last_modified_date TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create co_products table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS co_products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id TEXT,
+      product_number TEXT NOT NULL,
+      description TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
+    )
+  `);
+
+  console.log('✅ Database initialized');
+}
+
+export default db;
