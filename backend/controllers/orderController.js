@@ -381,9 +381,11 @@ export function getQueueParentPops(req, res) {
     // Get all parent POPs that are not completed
     const parentPops = db
       .prepare(`
-        SELECT * FROM related_pops 
-        WHERE pop_status != 'COMPLETED' 
-        ORDER BY timestamp DESC
+        SELECT rp.* FROM related_pops rp
+        INNER JOIN orders o ON rp.order_id = o.order_id
+        WHERE rp.pop_type_desc = 'Parent POP' 
+        AND o.status != 'COMPLETED'
+        ORDER BY rp.timestamp DESC
       `)
       .all();
 
