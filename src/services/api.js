@@ -70,4 +70,14 @@ export const orderAPI = {
     if (!response.ok) throw new Error('Failed to mark batch started');
     return response.json();
   },
+
+  togglePopLocked: async (queueId, popId, locked) => {
+    const response = await fetch(\`/queues/\/parent-pops/\/locked\, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locked }),
+    });
+    if (!response.ok) throw new Error('Failed to toggle locked status');
+    return response.json();
+  },
 };

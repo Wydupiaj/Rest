@@ -427,6 +427,7 @@ export function getQueueParentPops(req, res) {
         serialNumber: pop.serial_number,
         timestamp: pop.timestamp,
         batchCompleted: !!pop.batch_completed,
+        locked: !!pop.locked,
       };
     });
 
@@ -521,5 +522,24 @@ export function markBatchStarted(req, res) {
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Failed to mark batch started' });
+  }
+}
+
+// Toggle parent POP locked status
+export function togglePopLocked(req, res) {
+  try {
+    const { popId } = req.params;
+    const { locked } = req.body;
+
+    // Update locked status
+    db.prepare('UPDATE related_pops SET locked = ? WHERE pop_id = ?').run(locked ? 1 : 0, popId);
+
+    return res.json({
+      popId: popId,
+      locked: !!locked,
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to toggle locked status' });
   }
 }

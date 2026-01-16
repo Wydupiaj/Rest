@@ -8,36 +8,14 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  Stack
+  Stack,
+  Switch
 } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { orderAPI } from '../services/api'
-
-const parentPopColumns = [
-  { field: 'popId', headerName: 'Parent POP ID', width: 150, sortable: true },
-  { field: 'orderId', headerName: 'Order ID', width: 130 },
-  { field: 'materialProduced', headerName: 'Material', width: 140 },
-  { field: 'partNumber', headerName: 'Part Number', width: 140 },
-  { 
-    field: 'popStatus', 
-    headerName: 'POP Status', 
-    width: 160,
-    renderCell: (params) => {
-      let color = 'default'
-      if (params.value === 'Product Created') color = 'info'
-      if (params.value === 'Batch Started') color = 'warning'
-      if (params.value === 'Batch Completed') color = 'success'
-      return <Chip label={params.value} color={color} size="small" />
-    }
-  },
-  { field: 'quantity', headerName: 'Quantity', width: 100 },
-  { field: 'serialNumber', headerName: 'Serial Number', width: 130 },
-  { field: 'description', headerName: 'Description', width: 200 },
-  { field: 'timestamp', headerName: 'Timestamp', width: 180 },
-]
 
 export default function QueueDetailPage() {
   const { queueId } = useParams()
@@ -49,6 +27,42 @@ export default function QueueDetailPage() {
   const [error, setError] = useState(null)
   const [parentPops, setParentPops] = useState([])
   const [selectionModel, setSelectionModel] = useState([])
+
+  const parentPopColumns = [
+    { field: 'popId', headerName: 'Parent POP ID', width: 150, sortable: true },
+    { field: 'orderId', headerName: 'Order ID', width: 130 },
+    { field: 'materialProduced', headerName: 'Material', width: 140 },
+    { field: 'partNumber', headerName: 'Part Number', width: 140 },
+    { field: 'description', headerName: 'Parent POP Description', width: 220 },
+    { 
+      field: 'popStatus', 
+      headerName: 'POP Status', 
+      width: 160,
+      renderCell: (params) => {
+        let color = 'default'
+        if (params.value === 'Product Created') color = 'info'
+        if (params.value === 'Batch Started') color = 'warning'
+        if (params.value === 'Batch Completed') color = 'success'
+        return <Chip label={params.value} color={color} size="small" />
+      }
+    },
+    { 
+      field: 'locked', 
+      headerName: 'Locked', 
+      width: 120,
+      renderCell: (params) => (
+        <Switch
+          checked={params.value}
+          onChange={(e) => handleLockToggle(params.row.popId, e.target.checked)}
+          color="primary"
+          onClick={(e) => e.stopPropagation()}
+        />
+      )
+    },
+    { field: 'quantity', headerName: 'Quantity', width: 100 },
+    { field: 'serialNumber', headerName: 'Serial Number', width: 130 },
+    { field: 'timestamp', headerName: 'Timestamp', width: 180 },
+  ]
 
   useEffect(() => {
     fetchParentPops()
@@ -73,6 +87,7 @@ export default function QueueDetailPage() {
         serialNumber: pop.serialNumber,
         timestamp: pop.timestamp,
         batchCompleted: pop.batchCompleted,
+        locked: pop.locked,
       }))
       
       setParentPops(transformedPops)
@@ -81,6 +96,17 @@ export default function QueueDetailPage() {
       console.error('Error fetching parent POPs:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleLockToggle = async (popId, locked) => {
+    try {
+      await orderAPI.togglePopLocked(queueId, popId, locked)
+      setParentPops((prev) => prev.map((p) => 
+        p.popId === popId ? { ...p, locked } : p
+      ))
+    } catch (err) {
+      setError(err.message || 'Failed to toggle locked status')
     }
   }
 
