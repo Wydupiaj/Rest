@@ -56,9 +56,24 @@ export function getOrderById(req, res) {
       .prepare('SELECT * FROM related_pops WHERE order_id = ?')
       .all(orderId);
 
+    // Helper to compute display status for parent POP
+    const computeParentStatus = (orderStatus, batchCompleted, popStatus) => {
+      if (orderStatus === 'READY' || orderStatus === 'UPDATED') return 'Product Created'
+      if (orderStatus === 'RELEASED') return batchCompleted ? 'Batch Completed' : 'Batch Started'
+      if (orderStatus === 'COMPLETED') return 'Batch Completed'
+      return popStatus
+    }
+
     // Separate parent POP and child POPs
     // Parent POPs have pop_type_desc = 'Parent POP', others are Child POPs
-    const parentPops = allPops.filter(pop => pop.pop_type_desc === 'Parent POP');
+    const parentPops = allPops
+      .filter(pop => pop.pop_type_desc === 'Parent POP')
+      .map(pop => ({
+        ...pop,
+        pop_status: computeParentStatus(order.status, pop.batch_completed, pop.pop_status),
+        batch_completed: pop.batch_completed || 0,
+      }))
+
     const childPops = allPops.filter(pop => pop.pop_type_desc !== 'Parent POP');
 
     // Get production parameters
