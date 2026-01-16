@@ -142,6 +142,17 @@ export function initializeDatabase() {
     }
   }
 
+  // Check if batch_completed column exists in related_pops table
+  try {
+    db.prepare('SELECT batch_completed FROM related_pops LIMIT 1').get();
+  } catch (err) {
+    if (err.message.includes('no such column')) {
+      console.log('Adding batch_completed column to related_pops table...');
+      db.exec('ALTER TABLE related_pops ADD COLUMN batch_completed INTEGER DEFAULT 0');
+      console.log('✅ batch_completed column added');
+    }
+  }
+
   console.log('✅ Database initialized');
 }
 

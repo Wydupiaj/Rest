@@ -45,6 +45,7 @@ export default function QueueDetailPage() {
   const [error, setError] = useState(null)
   const [parentPops, setParentPops] = useState([])
   const [tabValue, setTabValue] = useState(0)
+  const [selectionModel, setSelectionModel] = useState([])
 
   useEffect(() => {
     fetchParentPops()
@@ -70,12 +71,27 @@ export default function QueueDetailPage() {
         description: pop.description,
         serialNumber: pop.serialNumber,
         timestamp: pop.timestamp,
+        batchCompleted: pop.batchCompleted,
       }))
       
       setParentPops(transformedPops)
     } catch (err) {
       setError(err.message || 'Failed to fetch parent POPs')
       console.error('Error fetching parent POPs:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBatchComplete = async () => {
+    if (selectionModel.length === 0) return
+    const popId = selectionModel[0]
+    try {
+      setLoading(true)
+      const updated = await orderAPI.markBatchCompleted(queueId, popId)
+      setParentPops((prev) => prev.map((p) => p.popId === popId ? { ...p, popStatus: updated.popStatus, batchCompleted: true } : p))
+    } catch (err) {
+      setError(err.message || 'Failed to mark batch completed')
     } finally {
       setLoading(false)
     }
@@ -104,6 +120,15 @@ export default function QueueDetailPage() {
           <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
             Queue: {queueId}
           </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={selectionModel.length === 0}
+            onClick={handleBatchComplete}
+          >
+            Batch completed
+          </Button>
         </Box>
 
         {error && (
@@ -163,6 +188,9 @@ export default function QueueDetailPage() {
                 rowsPerPageOptions={[10, 25, 50]}
                 pagination
                 disableSelectionOnClick
+                checkboxSelection
+                selectionModel={selectionModel}
+                onSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
               />
             </Box>
           </TabPanel>

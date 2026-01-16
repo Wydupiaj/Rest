@@ -378,33 +378,95 @@ export function getQueueParentPops(req, res) {
   try {
     const { queueId } = req.params;
 
-    // Get all parent POPs that are not completed
+    // Get all parent POPs that are not completed (order not completed)
     const parentPops = db
       .prepare(`
-        SELECT rp.* FROM related_pops rp
+        SELECT rp.*, o.status AS order_status FROM related_pops rp
         INNER JOIN orders o ON rp.order_id = o.order_id
-        WHERE rp.pop_type_desc = 'Parent POP' 
+        WHERE rp.pop_type_desc = 'Parent POP'
         AND o.status != 'COMPLETED'
         ORDER BY rp.timestamp DESC
       `)
       .all();
 
-    // Filter and transform the data
-    const transformedPops = parentPops.map(pop => ({
-      popId: pop.pop_id,
-      orderId: pop.order_id,
-      materialProduced: pop.material_produced,
-      quantity: pop.quantity,
-      popStatus: pop.pop_status,
-      partNumber: pop.part_number,
-      description: pop.description,
-      serialNumber: pop.serial_number,
-      timestamp: pop.timestamp,
-    }));
+    // Compute display status based on order status and batch flag
+    const transformedPops = parentPops.map(pop => {
+      let displayStatus = pop.pop_status;
+
+      if (pop.order_status === 'READY' || pop.order_status === 'UPDATED') {
+        displayStatus = 'Product Created';
+      } else if (pop.order_status === 'RELEASED') {
+        displayStatus = pop.batch_completed ? 'Batch Completed' : 'Batch Started';
+      } else if (pop.order_status === 'COMPLETED') {
+        displayStatus = 'Batch Completed';
+      }
+
+      return {
+        popId: pop.pop_id,
+        orderId: pop.order_id,
+        materialProduced: pop.material_produced,
+        quantity: pop.quantity,
+        popStatus: displayStatus,
+        partNumber: pop.part_number,
+        description: pop.description,
+        serialNumber: pop.serial_number,
+        timestamp: pop.timestamp,
+        batchCompleted: !!pop.batch_completed,
+      };
+    });
 
     res.json(transformedPops);
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Failed to fetch queue parent POPs' });
+  }
+}
+
+// Mark parent POP batch as completed
+export function markBatchCompleted(req, res) {
+  try {
+    const { popId } = req.params;
+
+    // Ensure parent POP exists
+    const pop = db
+      .prepare(`
+        SELECT rp.*, o.status AS order_status FROM related_pops rp
+        INNER JOIN orders o ON rp.order_id = o.order_id
+        WHERE rp.pop_id = ? AND rp.pop_type_desc = 'Parent POP'
+      `)
+      .get(popId);
+
+    if (!pop) {
+      return res.status(404).json({ error: 'Parent POP not found' });
+    }
+
+    // Update flag
+    db.prepare('UPDATE related_pops SET batch_completed = 1 WHERE pop_id = ?').run(popId);
+
+    // Recompute display status
+    let displayStatus = pop.pop_status;
+    if (pop.order_status === 'READY' || pop.order_status === 'UPDATED') {
+      displayStatus = 'Product Created';
+    } else if (pop.order_status === 'RELEASED') {
+      displayStatus = 'Batch Completed';
+    } else if (pop.order_status === 'COMPLETED') {
+      displayStatus = 'Batch Completed';
+    }
+
+    return res.json({
+      popId: pop.pop_id,
+      orderId: pop.order_id,
+      materialProduced: pop.material_produced,
+      quantity: pop.quantity,
+      popStatus: displayStatus,
+      partNumber: pop.part_number,
+      description: pop.description,
+      serialNumber: pop.serial_number,
+      timestamp: pop.timestamp,
+      batchCompleted: true,
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to mark batch completed' });
   }
 }

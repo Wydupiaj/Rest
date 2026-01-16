@@ -13,5 +13,6 @@ router.delete('/orders/:orderId', orderController.deleteOrder);
 // Queue routes
 router.get('/queues', orderController.getQueues);
 router.get('/queues/:queueId/parent-pops', orderController.getQueueParentPops);
+router.patch('/queues/:queueId/parent-pops/:popId/batch-completed', orderController.markBatchCompleted);
 
 export default router;

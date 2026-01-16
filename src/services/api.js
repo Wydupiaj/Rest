@@ -54,4 +54,12 @@ export const orderAPI = {
     if (!response.ok) throw new Error('Failed to fetch queue parent POPs');
     return response.json();
   },
+
+  markBatchCompleted: async (queueId, popId) => {
+    const response = await fetch(`${API_BASE_URL}/queues/${queueId}/parent-pops/${popId}/batch-completed`, {
+      method: 'PATCH',
+    });
+    if (!response.ok) throw new Error('Failed to mark batch completed');
+    return response.json();
+  },
 };
