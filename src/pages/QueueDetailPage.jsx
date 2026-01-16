@@ -9,12 +9,15 @@ import {
   Alert,
   Chip,
   Stack,
-  Switch
+  Switch,
+  IconButton,
+  Tooltip
 } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { orderAPI } from '../services/api'
 
 export default function QueueDetailPage() {
@@ -62,6 +65,24 @@ export default function QueueDetailPage() {
     { field: 'quantity', headerName: 'Quantity', width: 100 },
     { field: 'serialNumber', headerName: 'Serial Number', width: 130 },
     { field: 'timestamp', headerName: 'Timestamp', width: 180 },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 100,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Tooltip title="View Parent POP Details">
+          <IconButton
+            size="small"
+            onClick={() => navigate(`/parent-pop/${params.row.orderId}`)}
+            sx={{ color: 'primary.main' }}
+          >
+            <OpenInNewIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )
+    },
   ]
 
   useEffect(() => {
@@ -247,13 +268,11 @@ export default function QueueDetailPage() {
               <DataGrid
                 rows={parentPops}
                 columns={parentPopColumns}
-                pageSize={10}
-                rowsPerPageOptions={[10, 25, 50, 100]}
-                pagination
+                pageSizeOptions={[10, 25, 50, 100]}
                 checkboxSelection
-                disableMultipleSelection
-                selectionModel={selectionModel}
-                onSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
+                disableMultipleRowSelection
+                rowSelectionModel={selectionModel}
+                onRowSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
                 sx={{
                   '& .MuiDataGrid-row:hover': {
                     backgroundColor: 'action.hover',

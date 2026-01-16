@@ -153,6 +153,17 @@ export function initializeDatabase() {
     }
   }
 
+  // Check if locked column exists in related_pops table
+  try {
+    db.prepare('SELECT locked FROM related_pops LIMIT 1').get();
+  } catch (err) {
+    if (err.message.includes('no such column')) {
+      console.log('Adding locked column to related_pops table...');
+      db.exec('ALTER TABLE related_pops ADD COLUMN locked INTEGER DEFAULT 0');
+      console.log('✅ locked column added');
+    }
+  }
+
   console.log('✅ Database initialized');
 }
 

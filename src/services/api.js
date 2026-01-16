@@ -72,12 +72,28 @@ export const orderAPI = {
   },
 
   togglePopLocked: async (queueId, popId, locked) => {
-    const response = await fetch(\`/queues/\/parent-pops/\/locked\, {
+    const response = await fetch(`${API_BASE_URL}/queues/${queueId}/parent-pops/${popId}/locked`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ locked }),
     });
     if (!response.ok) throw new Error('Failed to toggle locked status');
+    return response.json();
+  },
+
+  markChildPopScrapped: async (orderId, popId) => {
+    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/child-pops/${popId}/scrapped`, {
+      method: 'PATCH',
+    });
+    if (!response.ok) throw new Error('Failed to mark child POP as scrapped');
+    return response.json();
+  },
+
+  completeOrder: async (orderId) => {
+    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/complete`, {
+      method: 'PATCH',
+    });
+    if (!response.ok) throw new Error('Failed to complete order');
     return response.json();
   },
 };

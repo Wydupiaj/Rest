@@ -53,8 +53,8 @@ for (const order of sampleOrders) {
         const popStmt = db.prepare(`
           INSERT OR IGNORE INTO related_pops (
             pop_id, order_id, material_produced, quantity, pop_id_ref, pop_type,
-            pop_type_desc, pop_status, registration_code, registration_desc, timestamp, part_number
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            pop_type_desc, pop_status, registration_code, registration_desc, timestamp, part_number, description, serial_number
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const popResult = popStmt.run(
@@ -69,7 +69,9 @@ for (const order of sampleOrders) {
           pop.registrationCode,
           pop.registrationDesc,
           pop.timestamp,
-          pop.materialProduced // Parent POP has material_produced as part_number
+          pop.materialProduced,
+          `Blank Type ${ordersInserted}`, // Description with Blank Type
+          `SN-${order.orderId}-${pop.popId}` // Serial number
         );
 
         if (popResult.changes > 0) {
@@ -106,31 +108,38 @@ for (const order of sampleOrders) {
       }
     }
 
-    // Insert consumed materials
-    if (order.consumedMaterials && order.consumedMaterials.length > 0) {
-      for (const material of order.consumedMaterials) {
-        const materialStmt = db.prepare(`
-          INSERT INTO consumed_materials (
-            order_id, material_consumed, material_description,
-            segment_id, equipment_id, equipment_level, quantity, last_modified_date
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `);
+    // Insert consumed materials - only one Blank material per order
+    const equipmentMap = {
+      'WR00001': 'EQ-BLANK-01',
+      'WR00002': 'EQ-BLANK-02',
+      'WR00003': 'EQ-BLANK-03',
+      'WR00004': 'EQ-BLANK-04',
+      'WR00005': 'EQ-BLANK-05',
+      'WR00006': 'EQ-BLANK-06',
+    };
 
-        const materialResult = materialStmt.run(
-          order.orderId,
-          material.materialConsumed,
-          material.materialDescription,
-          material.segmentId,
-          material.equipmentId,
-          material.equipmentLevel,
-          material.quantity,
-          material.lastModifiedDate
-        );
+    const equipId = equipmentMap[order.equip] || `EQ-BLANK-${ordersInserted}`;
+    
+    const materialStmt = db.prepare(`
+      INSERT INTO consumed_materials (
+        order_id, material_consumed, material_description,
+        segment_id, equipment_id, equipment_level, quantity, last_modified_date
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
-        if (materialResult.changes > 0) {
-          materialsInserted++;
-        }
-      }
+    const materialResult = materialStmt.run(
+      order.orderId,
+      'Blank',
+      `Blank Type ${ordersInserted}`,
+      'SEG-BLANK',
+      equipId,
+      'Level 1',
+      '2 pcs',
+      new Date().toISOString().slice(0, 19).replace('T', ' ')
+    );
+
+    if (materialResult.changes > 0) {
+      materialsInserted++;
     }
 
     // Insert co-products and generate Child POPs

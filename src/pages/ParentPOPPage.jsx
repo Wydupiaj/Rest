@@ -10,9 +10,14 @@ import {
   Tabs,
   Tab,
   Grid,
-  Divider
+  Chip,
+  Stack,
+  IconButton,
+  Tooltip
 } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import DeleteIcon from '@mui/icons-material/Delete'
 import { orderAPI } from '../services/api'
 
 const childPopColumns = [
@@ -110,6 +115,9 @@ export default function ParentPopPage() {
       } else {
         setChildPops([])
       }
+
+      // Ensure orderData has childPops array
+      order.childPops = order.childPops || []
       
     } catch (err) {
       console.error('Error fetching order data:', err)
@@ -180,130 +188,296 @@ export default function ParentPopPage() {
   const convertedParams = (orderData.productionParameters || []).map(convertData)
   const convertedMaterials = (orderData.consumedMaterials || []).map(convertData)
 
+  // Compute parent POP display status (similar to queue detail page)
+  let displayStatus = convertedParentPop.popStatus
+  if (orderData.status === 'READY' || orderData.status === 'UPDATED') {
+    displayStatus = 'Product Created'
+  } else if (orderData.status === 'RELEASED') {
+    displayStatus = parentPop.batch_completed ? 'Batch Completed' : 'Batch Started'
+  } else if (orderData.status === 'COMPLETED') {
+    displayStatus = 'Batch Completed'
+  }
+
+  const getStatusColor = (status) => {
+    if (status === 'Product Created') return 'info'
+    if (status === 'Batch Started') return 'warning'
+    if (status === 'Batch Completed') return 'success'
+    return 'default'
+  }
+
+  const handleCompleteOrder = async () => {
+    try {
+      await orderAPI.completeOrder(orderId)
+      // Refresh order data
+      const order = await orderAPI.getOrderById(orderId)
+      setOrderData(order)
+      setError(null)
+    } catch (err) {
+      setError(err.message || 'Failed to complete order')
+    }
+  }
+
+  const handleChildPopScrapped = async (childPopId) => {
+    try {
+      await orderAPI.markChildPopScrapped(orderId, childPopId)
+      // Refresh order data
+      const order = await orderAPI.getOrderById(orderId)
+      setOrderData(order)
+      setError(null)
+    } catch (err) {
+      setError(err.message || 'Failed to mark child POP as scrapped')
+    }
+  }
+
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 2 }}>
-        <Button variant="outlined" onClick={() => navigate('/component-order')}>
-          ← Back to Orders
-        </Button>
-      </Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', pt: 4, pb: 6 }}>
+      <Box sx={{ maxWidth: '1600px', mx: 'auto', px: 3 }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/component-order')}
+            sx={{ mr: 2 }}
+            variant="outlined"
+          >
+            Back
+          </Button>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
+            Parent POP Details - {convertedParentPop.popId}
+          </Typography>
+        </Box>
 
-      <Typography variant="h5" gutterBottom>
-        Building info for POP
-      </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
 
-      {/* Parent POP Information - Red Border */}
-      <Paper sx={{ p: 3, mb: 3, border: '3px solid #d32f2f' }}>
-        <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-          POP information
-        </Typography>
-        
-        <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <Typography><strong>POP STATUS:</strong> {convertedParentPop.popStatus}</Typography>
-            <Typography><strong>POP Type:</strong> {convertedParentPop.popType}</Typography>
-            <Typography><strong>Pop id:</strong> {convertedParentPop.popId}</Typography>
-            <Typography><strong>POP type:</strong> {convertedParentPop.popTypeDesc}</Typography>
-            <Typography><strong>Material produced:</strong> {convertedParentPop.materialProduced || orderData.material}</Typography>
-            <Typography><strong>Quantity:</strong> {convertedParentPop.quantity || orderData.qty}</Typography>
-            
-            {/* Co-Products Section */}
-            {orderData.coProducts && orderData.coProducts.length > 0 && (
-              <Box sx={{ mt: 2 }}>
+        {/* Parent POP Information Card */}
+        <Paper sx={{ p: 3, mb: 3, bgcolor: 'background.paper' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              POP Information
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Order: {orderData.orderId} • Status: <Chip label={orderData.status} size="small" color={orderData.status === 'RELEASED' ? 'warning' : orderData.status === 'COMPLETED' ? 'success' : 'default'} sx={{ ml: 1, height: 24 }} />
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Chip
+              label={displayStatus}
+              color={getStatusColor(displayStatus)}
+              sx={{ fontWeight: 'bold', minWidth: 150, height: 32 }}
+            />
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleCompleteOrder}
+              disabled={orderData.status !== 'RELEASED'}
+              size="small"
+            >
+              Complete Order
+            </Button>
+          </Box>
+        </Box>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
+                POP ID
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.popId}</Typography>
+
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
+                Material Produced
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.materialProduced || orderData.material || '-'}</Typography>
+
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
+                Description
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.description || '-'}</Typography>
+
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
+                Quantity
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.quantity || orderData.qty || '-'}</Typography>
+
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
+                Part Number
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.partNumber || '-'}</Typography>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
+                Order ID
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>{orderData.orderId}</Typography>
+
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
+                Order Status
+              </Typography>
+              <Chip label={orderData.status} color={orderData.status === 'RELEASED' ? 'warning' : orderData.status === 'COMPLETED' ? 'success' : 'default'} sx={{ mb: 2 }} />
+
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold', mt: 1 }}>
+                POP Type
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.popTypeDesc || '-'}</Typography>
+
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
+                Timestamp
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.timestamp || '-'}</Typography>
+
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
+                Serial Number
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.serialNumber || '-'}</Typography>
+            </Grid>
+          </Grid>
+
+          {/* Co-Products Section */}
+          {orderData.coProducts && orderData.coProducts.length > 0 && (
+            <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid #e0e0e0' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2 }}>
+                Co-Products
+              </Typography>
+              <Stack spacing={2}>
                 {orderData.coProducts.map((coProduct, index) => (
                   <Box key={index}>
-                    <Typography>
-                      <strong>{index + 1} Co-Product number:</strong> {coProduct.number || coProduct.product_number}
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                      Co-Product {index + 1}
                     </Typography>
-                    <Typography>
-                      <strong>{index + 1} Co-Product description:</strong> {coProduct.description}
+                    <Typography variant="body2">
+                      {coProduct.number || coProduct.product_number} - {coProduct.description}
                     </Typography>
                   </Box>
                 ))}
-              </Box>
-            )}
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="body2" sx={{ mt: 2 }}>
-              Last registration point was <strong>{convertedParentPop.registrationCode}</strong> - {convertedParentPop.registrationDesc} on{' '}
-              <strong>{convertedParentPop.timestamp}</strong>
-            </Typography>
-            <Typography variant="body2">
-              Last modified by <strong>YSERYRAN</strong> on <strong>January 15, 2026 at 9:49:46 AM GMT+0</strong>
-            </Typography>
-          </Grid>
+              </Stack>
+            </Box>
+          )}
+        </Paper>
 
-          <Grid item xs={6}>
-            <Typography><strong>Order info:</strong> {orderData.orderId}</Typography>
-            <Typography><strong>Body type:</strong></Typography>
-            <Typography><strong>Model year:</strong> 99</Typography>
-            <Typography><strong>RFID:</strong></Typography>
-            <Divider sx={{ my: 1 }} />
-            <Typography><strong>Order id:</strong> {orderData.orderId}</Typography>
-            <Typography><strong>Vendor code:</strong> AEMR7</Typography>
-            <Divider sx={{ my: 1 }} />
-            <Typography><strong>Product id:</strong> {orderData.materialDesc}</Typography>
-            <Typography><strong>Test pop:</strong> false</Typography>
-            <Typography>
-              <strong>GR message sent at:</strong> November 3, 2025 at 9:43:59 AM GMT+0
-            </Typography>
-          </Grid>
-        </Grid>
-      </Paper>
+        {/* Tabs for Child POPs, Production Parameters, and Consumed Materials */}
+        <Paper sx={{ mb: 3 }}>
+          <Tabs
+            value={tabValue}
+            onChange={(e, newValue) => setTabValue(newValue)}
+            sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
+          >
+            <Tab label={`Child POPs (${(orderData.childPops || []).length})`} />
+            <Tab label={`Production Parameters (${(orderData.productionParameters || []).length})`} />
+            <Tab label={`Consumed Materials (${(orderData.consumedMaterials || []).length})`} />
+          </Tabs>
 
-      {/* Tabs Section */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
-          <Tab label="Serials" />
-          <Tab label="Production Parameters" />
-          <Tab label="Consumed Materials" />
-        </Tabs>
+          {/* Child POPs Tab */}
+          {tabValue === 0 && (
+            <Box sx={{ p: 3 }}>
+              {orderData.childPops && orderData.childPops.length > 0 ? (
+                <Box sx={{ height: 400, width: '100%' }}>
+                  <DataGrid
+                    rows={orderData.childPops.map(cp => ({
+                      id: cp.pop_id || cp.id,
+                      popId: cp.pop_id,
+                      serialNumber: cp.serial_number || cp.serialNumber || '',
+                      childPopId: cp.pop_id,
+                      partNumber: cp.part_number || '-',
+                      type: cp.type || '-',
+                      typeDescription: cp.type_description || '-',
+                      status: cp.pop_status || '-',
+                      description: cp.description || '-',
+                      timestamp: cp.timestamp || '-',
+                    }))}
+                    columns={[
+                      { field: 'serialNumber', headerName: 'Serial number', width: 130 },
+                      { field: 'childPopId', headerName: 'Child-POP id:', width: 150 },
+                      { field: 'partNumber', headerName: 'Part Number', width: 130 },
+                      { field: 'type', headerName: 'Type', width: 130 },
+                      { field: 'typeDescription', headerName: 'Type description', width: 200 },
+                      { field: 'status', headerName: 'Status', width: 130 },
+                      { field: 'description', headerName: 'Description', width: 200 },
+                      { field: 'timestamp', headerName: 'Timestamp', width: 180 },
+                      {
+                        field: 'actions',
+                        headerName: 'Actions',
+                        width: 100,
+                        sortable: false,
+                        filterable: false,
+                        renderCell: (params) => 
+                          params.row.status === 'Created' ? (
+                            <Tooltip title="Mark as Scrapped">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleChildPopScrapped(params.row.popId)}
+                                color="error"
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          ) : null
+                      }
+                    ]}
+                    pageSizeOptions={[5, 10, 25]}
+                    sx={{
+                      '& .MuiDataGrid-row:hover': {
+                        backgroundColor: 'action.hover',
+                      },
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Alert severity="info">No child POPs found</Alert>
+              )}
+            </Box>
+          )}
+
+          {/* Production Parameters Tab */}
+          {tabValue === 1 && (
+            <Box sx={{ p: 3 }}>
+              {orderData.productionParameters && orderData.productionParameters.length > 0 ? (
+                <Box sx={{ height: 400, width: '100%' }}>
+                  <DataGrid
+                    rows={convertedParams}
+                    columns={productionParamColumns}
+                    pageSizeOptions={[5, 10, 25]}
+                    sx={{
+                      '& .MuiDataGrid-row:hover': {
+                        backgroundColor: 'action.hover',
+                      },
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Alert severity="info">No production parameters found</Alert>
+              )}
+            </Box>
+          )}
+
+          {/* Consumed Materials Tab */}
+          {tabValue === 2 && (
+            <Box sx={{ p: 3 }}>
+              {orderData.consumedMaterials && orderData.consumedMaterials.length > 0 ? (
+                <Box sx={{ height: 400, width: '100%' }}>
+                  <DataGrid
+                    rows={convertedMaterials}
+                    columns={consumedMaterialColumns}
+                    pageSizeOptions={[5, 10, 25]}
+                    sx={{
+                      '& .MuiDataGrid-row:hover': {
+                        backgroundColor: 'action.hover',
+                      },
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Alert severity="info">No consumed materials found</Alert>
+              )}
+            </Box>
+          )}
+        </Paper>
       </Box>
-
-      {/* Child POPs Table - Green Border */}
-      <TabPanel value={tabValue} index={0}>
-        <Paper sx={{ border: '3px solid #2e7d32', p: 2 }}>
-          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-            Related Child POP's
-          </Typography>
-          <Box sx={{ height: 400, width: '100%' }}>
-            <DataGrid
-              rows={childPops}
-              columns={childPopColumns}
-              pageSize={10}
-              rowsPerPageOptions={[10, 25, 50]}
-              disableSelectionOnClick
-              sx={{
-                '& .MuiDataGrid-cell': { fontSize: '0.875rem' },
-                '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' }
-              }}
-            />
-          </Box>
-        </Paper>
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={1}>
-        <Paper sx={{ p: 2, height: 500 }}>
-          <DataGrid
-            rows={convertedParams}
-            columns={productionParamColumns}
-            pageSize={10}
-            rowsPerPageOptions={[10, 25, 50]}
-            disableSelectionOnClick
-          />
-        </Paper>
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={2}>
-        <Paper sx={{ p: 2, height: 500 }}>
-          <DataGrid
-            rows={convertedMaterials}
-            columns={consumedMaterialColumns}
-            pageSize={10}
-            rowsPerPageOptions={[10, 25, 50]}
-            disableSelectionOnClick
-          />
-        </Paper>
-      </TabPanel>
     </Box>
   )
 }

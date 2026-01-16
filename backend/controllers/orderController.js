@@ -484,7 +484,8 @@ export function markBatchCompleted(req, res) {
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Failed to mark batch completed' });
-  }}
+  }
+}
 
 // Mark parent POP batch as started (change order status to RELEASED)
 export function markBatchStarted(req, res) {
@@ -541,5 +542,53 @@ export function togglePopLocked(req, res) {
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Failed to toggle locked status' });
+  }
+}
+// Mark child POP as scrapped
+export function markChildPopScrapped(req, res) {
+  try {
+    const { orderId, popId } = req.params;
+
+    // Update child POP status to Scrapped
+    db.prepare('UPDATE related_pops SET pop_status = ? WHERE pop_id = ? AND order_id = ? AND pop_type_desc = ?')
+      .run('Scrapped', popId, orderId, 'Child POP');
+
+    return res.json({
+      popId: popId,
+      status: 'Scrapped'
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to mark child POP as scrapped' });
+  }
+}
+
+// Complete order (change status from RELEASED to COMPLETED)
+export function completeOrder(req, res) {
+  try {
+    const { orderId } = req.params;
+
+    // Get current order to check status
+    const order = db.prepare('SELECT status FROM orders WHERE order_id = ?').get(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Only allow completion if status is RELEASED
+    if (order.status !== 'RELEASED') {
+      return res.status(400).json({ error: 'Order can only be completed when status is RELEASED' });
+    }
+
+    // Update order status to COMPLETED
+    db.prepare('UPDATE orders SET status = ? WHERE order_id = ?').run('COMPLETED', orderId);
+
+    return res.json({
+      orderId: orderId,
+      status: 'COMPLETED'
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to complete order' });
   }
 }
