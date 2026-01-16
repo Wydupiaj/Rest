@@ -345,3 +345,64 @@ export function deleteOrder(req, res) {
     res.status(500).json({ error: 'Failed to delete order' });
   }
 }
+
+// Get all queues
+export function getQueues(req, res) {
+  try {
+    // For now, return a sample queue structure
+    // In a real system, this would come from a queues table
+    const queues = [
+      {
+        id: 'WR000001',
+        description: 'Rotor Substacks - Build Start Queue',
+        type: 'PART',
+        subassembly: 'WR000001',
+        equipmentLocationName: 'WR000001',
+        items: 199,
+        maxPopsToPrestart: 0,
+        popCreationAllowed: true,
+        lastModifiedBy: 'MADEVAG',
+        lastModifiedDate: '2026-01-14 10:14'
+      }
+    ];
+    
+    res.json(queues);
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to fetch queues' });
+  }
+}
+
+// Get parent POPs for a queue (not completed)
+export function getQueueParentPops(req, res) {
+  try {
+    const { queueId } = req.params;
+
+    // Get all parent POPs that are not completed
+    const parentPops = db
+      .prepare(`
+        SELECT * FROM related_pops 
+        WHERE pop_status != 'COMPLETED' 
+        ORDER BY timestamp DESC
+      `)
+      .all();
+
+    // Filter and transform the data
+    const transformedPops = parentPops.map(pop => ({
+      popId: pop.pop_id,
+      orderId: pop.order_id,
+      materialProduced: pop.material_produced,
+      quantity: pop.quantity,
+      popStatus: pop.pop_status,
+      partNumber: pop.part_number,
+      description: pop.description,
+      serialNumber: pop.serial_number,
+      timestamp: pop.timestamp,
+    }));
+
+    res.json(transformedPops);
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to fetch queue parent POPs' });
+  }
+}

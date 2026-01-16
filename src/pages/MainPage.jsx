@@ -17,9 +17,9 @@ export default function MainPage() {
       color: '#1976d2'
     },
     {
-      title: 'Page 2',
-      description: 'Coming soon',
-      path: '/page2',
+      title: 'Build Start Queue',
+      description: 'View and manage production queues',
+      path: '/build-start-queue',
       color: '#388e3c'
     },
     {

@@ -10,4 +10,8 @@ router.post('/orders', orderController.createOrder);
 router.put('/orders/:orderId', orderController.updateOrder);
 router.delete('/orders/:orderId', orderController.deleteOrder);
 
+// Queue routes
+router.get('/queues', orderController.getQueues);
+router.get('/queues/:queueId/parent-pops', orderController.getQueueParentPops);
+
 export default router;

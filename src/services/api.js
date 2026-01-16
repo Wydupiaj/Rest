@@ -41,4 +41,17 @@ export const orderAPI = {
     if (!response.ok) throw new Error('Failed to delete order');
     return response.json();
   },
+
+  // Queue routes
+  getQueues: async () => {
+    const response = await fetch(`${API_BASE_URL}/queues`);
+    if (!response.ok) throw new Error('Failed to fetch queues');
+    return response.json();
+  },
+
+  getQueueParentPops: async (queueId) => {
+    const response = await fetch(`${API_BASE_URL}/queues/${queueId}/parent-pops`);
+    if (!response.ok) throw new Error('Failed to fetch queue parent POPs');
+    return response.json();
+  },
 };
