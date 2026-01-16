@@ -16,3 +16,4 @@ router.get('/queues/:queueId/parent-pops', orderController.getQueueParentPops);
 router.patch('/queues/:queueId/parent-pops/:popId/batch-completed', orderController.markBatchCompleted);
 
 export default router;
+router.patch('/queues/:queueId/parent-pops/:popId/batch-started', orderController.markBatchStarted);
