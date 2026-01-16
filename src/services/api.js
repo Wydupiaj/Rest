@@ -62,12 +62,12 @@ export const orderAPI = {
     if (!response.ok) throw new Error('Failed to mark batch completed');
     return response.json();
   },
-};
 
   markBatchStarted: async (queueId, popId) => {
-    const response = await fetch(\`/queues/\/parent-pops/\/batch-started\, {
+    const response = await fetch(`${API_BASE_URL}/queues/${queueId}/parent-pops/${popId}/batch-started`, {
       method: 'PATCH',
     });
     if (!response.ok) throw new Error('Failed to mark batch started');
     return response.json();
   },
+};

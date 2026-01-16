@@ -14,6 +14,6 @@ router.delete('/orders/:orderId', orderController.deleteOrder);
 router.get('/queues', orderController.getQueues);
 router.get('/queues/:queueId/parent-pops', orderController.getQueueParentPops);
 router.patch('/queues/:queueId/parent-pops/:popId/batch-completed', orderController.markBatchCompleted);
+router.patch('/queues/:queueId/parent-pops/:popId/batch-started', orderController.markBatchStarted);
 
 export default router;
-router.patch('/queues/:queueId/parent-pops/:popId/batch-started', orderController.markBatchStarted);
