@@ -51,10 +51,15 @@ export function getOrderById(req, res) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Get related POPs
-    const relatedPops = db
+    // Get related POPs (all POPs including parent and children)
+    const allPops = db
       .prepare('SELECT * FROM related_pops WHERE order_id = ?')
       .all(orderId);
+
+    // Separate parent POP and child POPs
+    // Parent POPs have pop_type_desc = 'Parent POP', others are Child POPs
+    const parentPops = allPops.filter(pop => pop.pop_type_desc === 'Parent POP');
+    const childPops = allPops.filter(pop => pop.pop_type_desc !== 'Parent POP');
 
     // Get production parameters
     const productionParameters = db
@@ -73,7 +78,8 @@ export function getOrderById(req, res) {
 
     const completeOrder = {
       ...order,
-      relatedPops,
+      relatedPops: parentPops,
+      childPops: childPops,
       productionParameters,
       consumedMaterials,
       coProducts,

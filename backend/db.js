@@ -51,6 +51,9 @@ export function initializeDatabase() {
       registration_code TEXT,
       registration_desc TEXT,
       timestamp TEXT,
+      part_number TEXT,
+      description TEXT,
+      serial_number TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
     )
@@ -102,6 +105,42 @@ export function initializeDatabase() {
       FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
     )
   `);
+
+  // Check if part_number column exists in related_pops table
+  try {
+    db.prepare('SELECT part_number FROM related_pops LIMIT 1').get();
+  } catch (err) {
+    // Column doesn't exist, add it
+    if (err.message.includes('no such column')) {
+      console.log('Adding part_number column to related_pops table...');
+      db.exec('ALTER TABLE related_pops ADD COLUMN part_number TEXT');
+      console.log('✅ part_number column added');
+    }
+  }
+
+  // Check if description column exists in related_pops table
+  try {
+    db.prepare('SELECT description FROM related_pops LIMIT 1').get();
+  } catch (err) {
+    // Column doesn't exist, add it
+    if (err.message.includes('no such column')) {
+      console.log('Adding description column to related_pops table...');
+      db.exec('ALTER TABLE related_pops ADD COLUMN description TEXT');
+      console.log('✅ description column added');
+    }
+  }
+
+  // Check if serial_number column exists in related_pops table
+  try {
+    db.prepare('SELECT serial_number FROM related_pops LIMIT 1').get();
+  } catch (err) {
+    // Column doesn't exist, add it
+    if (err.message.includes('no such column')) {
+      console.log('Adding serial_number column to related_pops table...');
+      db.exec('ALTER TABLE related_pops ADD COLUMN serial_number TEXT');
+      console.log('✅ serial_number column added');
+    }
+  }
 
   console.log('✅ Database initialized');
 }

@@ -6,6 +6,7 @@ try {
   // Delete all data from tables (in correct order due to foreign keys)
   db.prepare('DELETE FROM consumed_materials').run();
   db.prepare('DELETE FROM production_parameters').run();
+  db.prepare('DELETE FROM co_products').run();
   db.prepare('DELETE FROM related_pops').run();
   db.prepare('DELETE FROM orders').run();
   

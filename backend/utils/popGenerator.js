@@ -29,61 +29,117 @@ export function generateParentPop(order) {
 
 /**
  * Generate Child POPs based on WIP, Completed, and Scrapped counts
+ * Distributes Child POPs equally among parent and co-products
  * @param {Object} order - Order data
  * @param {Object} parentPop - Parent POP data
+ * @param {Array} coProducts - Array of co-products with productNumber and description
+ * @param {String} materialDescription - Material description for parent product
+ * @param {Number} startingSerialNumber - Starting serial number for unique IDs
  * @returns {Array} Array of Child POP data
  */
-export function generateChildPops(order, parentPop) {
+export function generateChildPops(order, parentPop, coProducts = [], materialDescription = '', startingSerialNumber = 100001) {
   const childPops = []
-  let serialCounter = 100001
+  let serialCounter = startingSerialNumber
+  let childSerialNumber = 1
   
   const completedCount = parseInt(order.completed) || 0
   const wipCount = parseInt(order.wip) || 0
   const scrappedCount = parseInt(order.scrapped) || 0
+  const totalChildPops = completedCount + wipCount + scrappedCount
+  
+  // Calculate number of products (parent + co-products)
+  const totalProducts = 1 + (coProducts?.length || 0)
+  
+  // Calculate child POPs per product
+  const childPopsPerProduct = Math.floor(totalChildPops / totalProducts)
+  
+  // Create arrays of part numbers and descriptions
+  const partNumbers = [parentPop.materialProduced]
+  const descriptions = [materialDescription]
+  
+  if (coProducts && coProducts.length > 0) {
+    coProducts.forEach(cp => {
+      partNumbers.push(cp.productNumber)
+      descriptions.push(cp.description || '')
+    })
+  }
   
   // Generate COMPLETED Child POPs
+  let productIndex = 0
+  let countInCurrentProduct = 0
+  
   for (let i = 0; i < completedCount; i++) {
+    if (countInCurrentProduct >= childPopsPerProduct && productIndex < partNumbers.length - 1) {
+      productIndex++
+      countInCurrentProduct = 0
+    }
+    
+    const childPopId = String(serialCounter).padStart(7, '0')
     childPops.push({
-      serialNumber: String(serialCounter),
-      childPopId: String(serialCounter).padStart(7, '0'),
+      serialNumber: String(childSerialNumber),
+      childPopId: childPopId,
       type: parentPop.popType,
       status: 'COMPLETED',
       materialProduced: parentPop.materialProduced,
       quantity: '1',
       orderId: order.order_id,
       parentPopId: parentPop.popId,
+      partNumber: partNumbers[productIndex],
+      description: descriptions[productIndex],
     })
     serialCounter++
+    childSerialNumber++
+    countInCurrentProduct++
   }
   
-  // Generate WIP (Manufactured) Child POPs
+  // Generate WIP (Created) Child POPs
   for (let i = 0; i < wipCount; i++) {
+    if (countInCurrentProduct >= childPopsPerProduct && productIndex < partNumbers.length - 1) {
+      productIndex++
+      countInCurrentProduct = 0
+    }
+    
+    const childPopId = String(serialCounter).padStart(7, '0')
     childPops.push({
-      serialNumber: String(serialCounter),
-      childPopId: String(serialCounter).padStart(7, '0'),
+      serialNumber: String(childSerialNumber),
+      childPopId: childPopId,
       type: parentPop.popType,
-      status: 'Manufactured',
+      status: 'Created',
       materialProduced: parentPop.materialProduced,
       quantity: '1',
       orderId: order.order_id,
       parentPopId: parentPop.popId,
+      partNumber: partNumbers[productIndex],
+      description: descriptions[productIndex],
     })
     serialCounter++
+    childSerialNumber++
+    countInCurrentProduct++
   }
   
   // Generate SCRAPPED Child POPs
   for (let i = 0; i < scrappedCount; i++) {
+    if (countInCurrentProduct >= childPopsPerProduct && productIndex < partNumbers.length - 1) {
+      productIndex++
+      countInCurrentProduct = 0
+    }
+    
+    const childPopId = String(serialCounter).padStart(7, '0')
     childPops.push({
-      serialNumber: String(serialCounter),
-      childPopId: String(serialCounter).padStart(7, '0'),
+      serialNumber: String(childSerialNumber),
+      childPopId: childPopId,
       type: parentPop.popType,
       status: 'Scrapped',
       materialProduced: parentPop.materialProduced,
       quantity: '1',
       orderId: order.order_id,
       parentPopId: parentPop.popId,
+      partNumber: partNumbers[productIndex],
+      description: descriptions[productIndex],
     })
     serialCounter++
+    childSerialNumber++
+    countInCurrentProduct++
   }
   
   return childPops

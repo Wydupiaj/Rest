@@ -1,5 +1,6 @@
 import db, { initializeDatabase } from './db.js';
 import sampleOrders from '../src/data/sampleOrders.js';
+import { generateParentPop, generateChildPops, generateCoProducts } from './utils/popGenerator.js';
 
 // Initialize database
 initializeDatabase();
@@ -8,8 +9,10 @@ console.log('🌱 Starting database seed...');
 
 let ordersInserted = 0;
 let popsInserted = 0;
+let childPopsInserted = 0;
 let paramsInserted = 0;
 let materialsInserted = 0;
+let currentSerialNumber = 100001;
 
 for (const order of sampleOrders) {
   try {
@@ -44,14 +47,14 @@ for (const order of sampleOrders) {
       ordersInserted++;
     }
 
-    // Insert related POPs
+    // Insert related POPs (Parent POP)
     if (order.relatedPops && order.relatedPops.length > 0) {
       for (const pop of order.relatedPops) {
         const popStmt = db.prepare(`
           INSERT OR IGNORE INTO related_pops (
             pop_id, order_id, material_produced, quantity, pop_id_ref, pop_type,
-            pop_type_desc, pop_status, registration_code, registration_desc, timestamp
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            pop_type_desc, pop_status, registration_code, registration_desc, timestamp, part_number
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const popResult = popStmt.run(
@@ -65,7 +68,8 @@ for (const order of sampleOrders) {
           pop.popStatus,
           pop.registrationCode,
           pop.registrationDesc,
-          pop.timestamp
+          pop.timestamp,
+          pop.materialProduced // Parent POP has material_produced as part_number
         );
 
         if (popResult.changes > 0) {
@@ -129,9 +133,10 @@ for (const order of sampleOrders) {
       }
     }
 
-    // Insert co-products
-    if (order.coProducts && order.coProducts.length > 0) {
-      for (const coProduct of order.coProducts) {
+    // Insert co-products and generate Child POPs
+    const coProducts = order.coProducts || [];
+    if (coProducts.length > 0) {
+      for (const coProduct of coProducts) {
         const coProductStmt = db.prepare(`
           INSERT INTO co_products (
             order_id, product_number, description
@@ -145,6 +150,61 @@ for (const order of sampleOrders) {
         );
       }
     }
+
+    // Generate and insert Child POPs
+    if (order.relatedPops && order.relatedPops.length > 0) {
+      const parentPop = order.relatedPops[0]; // Get parent POP
+      const childPops = generateChildPops(
+        {
+          order_id: order.orderId,
+          wip: order.wip,
+          completed: order.completed,
+          scrapped: order.scrapped,
+        },
+        {
+          popType: parentPop.popType,
+          materialProduced: parentPop.materialProduced,
+          popId: parentPop.id,
+        },
+        coProducts.map(cp => ({ 
+          productNumber: cp.number, 
+          description: cp.description 
+        })),
+        order.materialDesc, // Pass material description
+        currentSerialNumber // Pass current serial number
+      );
+
+      const childPopStmt = db.prepare(`
+        INSERT INTO related_pops (
+          pop_id, order_id, material_produced, quantity, pop_id_ref, pop_type,
+          pop_type_desc, pop_status, registration_code, registration_desc, timestamp, 
+          part_number, description, serial_number
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const childPop of childPops) {
+        childPopStmt.run(
+          childPop.childPopId,
+          childPop.orderId,
+          childPop.materialProduced,
+          childPop.quantity,
+          childPop.childPopId,
+          childPop.type,
+          childPop.status,
+          childPop.status,
+          childPop.type,
+          childPop.status,
+          new Date().toISOString().slice(0, 19).replace('T', ' '),
+          childPop.partNumber,
+          childPop.description,
+          childPop.serialNumber
+        );
+        childPopsInserted++;
+      }
+
+      // Update serial number for next order
+      currentSerialNumber += childPops.length;
+    }
   } catch (error) {
     console.error(`❌ Error inserting order ${order.orderId}:`, error.message);
   }
@@ -152,7 +212,8 @@ for (const order of sampleOrders) {
 
 console.log('✅ Database seed completed successfully!');
 console.log(`📊 Orders inserted: ${ordersInserted}`);
-console.log(`📍 Related POPs inserted: ${popsInserted}`);
+console.log(`📍 Related POPs (Parent + Child) inserted: ${popsInserted + childPopsInserted}`);
+console.log(`👶 Child POPs inserted: ${childPopsInserted}`);
 console.log(`⚙️  Production parameters inserted: ${paramsInserted}`);
 console.log(`📦 Consumed materials inserted: ${materialsInserted}`);
 

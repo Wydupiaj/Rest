@@ -17,7 +17,8 @@ import { orderAPI } from '../services/api'
 
 const childPopColumns = [
   { field: 'serialNumber', headerName: 'Serial number', width: 130 },
-  { field: 'childPopId', headerName: 'Child-POP id:', width: 130 },
+  { field: 'childPopId', headerName: 'Child-POP id:', width: 150 },
+  { field: 'partNumber', headerName: 'Part Number', width: 130 },
   { field: 'type', headerName: 'Type', width: 130 },
   { field: 'typeDescription', headerName: 'Type description', width: 200 },
   { field: 'status', headerName: 'Status', width: 130 },
@@ -87,62 +88,27 @@ export default function ParentPopPage() {
       setOrderData(order)
       
       // Parent POP is the first (and only) related POP
+      // Parent POP is the first related POP
       if (order.relatedPops && order.relatedPops.length > 0) {
         setParentPop(order.relatedPops[0])
+      }
         
-        // Generate child POPs based on WIP, Completed, and Scrapped
-        const generatedChildPops = []
-        let serialCounter = 100001
-        
-        // Add Completed child POPs
-        const completedCount = order.completed || 0
-        for (let i = 0; i < completedCount; i++) {
-          generatedChildPops.push({
-            id: `child-${serialCounter}`,
-            serialNumber: `${serialCounter}`,
-            childPopId: `${String(serialCounter).padStart(7, '0')}`,
-            type: order.relatedPops[0].popType,
-            typeDescription: order.relatedPops[0].popTypeDesc,
-            status: 'COMPLETED',
-            description: 'GR sent',
-            timestamp: '2025-04-22 12:51:53'
-          })
-          serialCounter++
-        }
-        
-        // Add WIP (Manufactured) child POPs
-        const wipCount = order.wip || 0
-        for (let i = 0; i < wipCount; i++) {
-          generatedChildPops.push({
-            id: `child-${serialCounter}`,
-            serialNumber: `${serialCounter}`,
-            childPopId: `${String(serialCounter).padStart(7, '0')}`,
-            type: order.relatedPops[0].popType,
-            typeDescription: order.relatedPops[0].popTypeDesc,
-            status: 'Manufactured',
-            description: 'Product produced',
-            timestamp: '2025-04-22 12:51:53'
-          })
-          serialCounter++
-        }
-        
-        // Add Scrapped child POPs
-        const scrappedCount = order.scrapped || 0
-        for (let i = 0; i < scrappedCount; i++) {
-          generatedChildPops.push({
-            id: `child-${serialCounter}`,
-            serialNumber: `${serialCounter}`,
-            childPopId: `${String(serialCounter).padStart(7, '0')}`,
-            type: order.relatedPops[0].popType,
-            typeDescription: order.relatedPops[0].popTypeDesc,
-            status: 'Scrapped',
-            description: 'Scrapped',
-            timestamp: '2025-04-22 12:51:53'
-          })
-          serialCounter++
-        }
-        
-        setChildPops(generatedChildPops)
+      // Get child POPs from backend
+      if (order.childPops && order.childPops.length > 0) {
+        const formattedChildPops = order.childPops.map(childPop => ({
+          id: childPop.pop_id || childPop.id,
+          serialNumber: childPop.serial_number || childPop.serialNumber || '',
+          childPopId: childPop.pop_id || childPop.childPopId,
+          partNumber: childPop.part_number || childPop.partNumber,
+          type: childPop.pop_type || childPop.type,
+          typeDescription: childPop.description || childPop.typeDescription || '',
+          status: childPop.pop_status || childPop.status,
+          description: childPop.registration_desc || childPop.description || 'N/A',
+          timestamp: childPop.timestamp || new Date().toISOString().slice(0, 19).replace('T', ' ')
+        }))
+        setChildPops(formattedChildPops)
+      } else {
+        setChildPops([])
       }
       
     } catch (err) {
