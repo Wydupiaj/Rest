@@ -18,6 +18,7 @@ import {
 import { DataGrid } from '@mui/x-data-grid'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteIcon from '@mui/icons-material/Delete'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { orderAPI } from '../services/api'
 
 const childPopColumns = [
@@ -261,26 +262,21 @@ export default function ParentPopPage() {
               POP Information
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Order: {orderData.orderId} • Status: <Chip label={orderData.status} size="small" color={orderData.status === 'RELEASED' ? 'warning' : orderData.status === 'COMPLETED' ? 'success' : 'default'} sx={{ ml: 1, height: 24 }} />
+              Order: {orderData.orderId}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Chip
-              label={displayStatus}
-              color={getStatusColor(displayStatus)}
-              sx={{ fontWeight: 'bold', minWidth: 150, height: 32 }}
-            />
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleCompleteOrder}
-              disabled={orderData.status !== 'RELEASED'}
-              size="small"
-            >
-              Complete Order
-            </Button>
-          </Box>
         </Box>
+
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" sx={{ mb: 3 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>Order Status:</Typography>
+            <Chip label={orderData.status} color={orderData.status === 'RELEASED' ? 'warning' : orderData.status === 'COMPLETED' ? 'success' : 'default'} sx={{ height: 28 }} />
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>Parent POP Status:</Typography>
+            <Chip label={displayStatus} color={getStatusColor(displayStatus)} sx={{ fontWeight: 'bold', minWidth: 150, height: 28 }} />
+          </Stack>
+        </Stack>
           
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
@@ -297,7 +293,9 @@ export default function ParentPopPage() {
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
                 Description
               </Typography>
-              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.description || '-'}</Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {orderData.material_desc || orderData.materialDesc || orderData.materialDescription || '-'}
+              </Typography>
 
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
                 Quantity
@@ -316,11 +314,6 @@ export default function ParentPopPage() {
               </Typography>
               <Typography variant="body2" sx={{ mb: 2 }}>{orderData.orderId}</Typography>
 
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
-                Order Status
-              </Typography>
-              <Chip label={orderData.status} color={orderData.status === 'RELEASED' ? 'warning' : orderData.status === 'COMPLETED' ? 'success' : 'default'} sx={{ mb: 2 }} />
-
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold', mt: 1 }}>
                 POP Type
               </Typography>
@@ -330,11 +323,6 @@ export default function ParentPopPage() {
                 Timestamp
               </Typography>
               <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.timestamp || '-'}</Typography>
-
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 'bold' }}>
-                Serial Number
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 2 }}>{convertedParentPop.serialNumber || '-'}</Typography>
             </Grid>
           </Grid>
 
@@ -476,6 +464,29 @@ export default function ParentPopPage() {
               )}
             </Box>
           )}
+        </Paper>
+
+        <Paper sx={{ p: 3, mb: 3, bgcolor: 'background.paper' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                Complete Order
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Mark this order as completed once all parent and child POP tasks are finished.
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircleOutlineIcon />}
+              onClick={handleCompleteOrder}
+              disabled={orderData.status !== 'RELEASED'}
+              sx={{ px: 3, py: 1.2, borderRadius: 2, boxShadow: '0 6px 18px rgba(46, 125, 50, 0.25)', textTransform: 'none', fontWeight: 700 }}
+            >
+              Complete Order
+            </Button>
+          </Stack>
         </Paper>
       </Box>
     </Box>
